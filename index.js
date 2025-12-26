@@ -1,7 +1,9 @@
 import { 
     eventSource, 
     event_types,
-    saveSettingsDebounced
+    saveSettingsDebounced,
+    setExtensionPrompt,
+    extension_prompt_types
 } from '../../../../script.js';
 import { 
     extension_settings,
@@ -9,7 +11,6 @@ import {
 } from '../../../extensions.js';
 
 const extensionName = "chaos_twist";
-const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
 
 // Дефолтные настройки
 const defaultSettings = {
@@ -17,10 +18,12 @@ const defaultSettings = {
     chance: 10,
     showNotifications: true,
     events: [
-        "[OOC: You will NOW introduce an unpredictable PLOT TWIST!]",
-        "[OOC: You will **NOW** do something **UNPREDICTABLE** that leads to ultimate **CHAOS** and **DRAMA**.]",
-        "[OOC: A sudden environmental disaster occurs right now!]",
-        "[OOC: An unexpected NPC enters the scene with shocking news!]"
+        "You will NOW introduce an unpredictable PLOT TWIST!",
+        "You will **NOW** do something **UNPREDICTABLE** that leads to ultimate **CHAOS** and **DRAMA**.",
+        "A sudden environmental disaster occurs right now!",
+        "An unexpected NPC enters the scene with shocking news!",
+        "A hidden secret is suddenly revealed!",
+        "Something goes terribly wrong in an unexpected way!"
     ]
 };
 
@@ -30,7 +33,6 @@ function loadSettings() {
         extension_settings[extensionName] = {};
     }
     
-    // Мержим с дефолтами
     for (const key in defaultSettings) {
         if (extension_settings[extensionName][key] === undefined) {
             extension_settings[extensionName][key] = defaultSettings[key];
@@ -107,12 +109,8 @@ async function showChancePopup() {
         large: false,
     });
     
-    // Настраиваем обработчики после показа popup
-    popup.show().then(() => {
-        // Popup закрыт - ничего не делаем
-    });
+    popup.show();
     
-    // Ждём появления popup в DOM
     await new Promise(resolve => setTimeout(resolve, 100));
     
     const slider = document.getElementById('chaos_popup_slider');
@@ -126,7 +124,6 @@ async function showChancePopup() {
         });
     }
     
-    // Пресет кнопки
     document.querySelectorAll('.chaos-preset-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const value = parseInt(btn.dataset.value);
@@ -136,17 +133,14 @@ async function showChancePopup() {
         });
     });
     
-    // Ждём закрытия popup
     const result = await popup.promise;
     
     if (result) {
-        // Сохраняем настройки
         const s = settings();
         s.isEnabled = enabledCheckbox?.checked ?? s.isEnabled;
         s.chance = parseInt(slider?.value ?? s.chance);
         s.showNotifications = notifyCheckbox?.checked ?? s.showNotifications;
         
-        // Если шанс 0, выключаем
         if (s.chance === 0) {
             s.isEnabled = false;
         }
@@ -172,23 +166,20 @@ function updateMenuButton() {
 }
 
 /**
- * Добавить кнопку в меню опций (бургер меню)
+ * Добавить кнопку в меню опций
  */
 function addMenuButton() {
-    // Ищем выпадающее меню опций
     const optionsMenu = document.getElementById('options');
     
     if (!optionsMenu) {
-        console.warn('[Chaos Twist] Options menu not found, retrying...');
+        console.warn('[Chaos Twist] Options menu not found');
         return false;
     }
     
-    // Проверяем не добавлена ли уже кнопка
     if (document.getElementById('chaos_menu_item')) {
         return true;
     }
     
-    // Создаём элемент меню в стиле ST
     const menuItem = document.createElement('a');
     menuItem.id = 'chaos_menu_item';
     menuItem.classList.add('list-group-item', 'flex-container', 'flexGap5');
@@ -201,14 +192,11 @@ function addMenuButton() {
     menuItem.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        // Закрываем меню
         const optionsButton = document.getElementById('options_button');
         if (optionsButton) optionsButton.click();
-        // Показываем popup
         showChancePopup();
     });
     
-    // Добавляем в начало меню (после заголовка если есть)
     const firstItem = optionsMenu.querySelector('.list-group-item');
     if (firstItem) {
         optionsMenu.insertBefore(menuItem, firstItem);
@@ -216,15 +204,14 @@ function addMenuButton() {
         optionsMenu.appendChild(menuItem);
     }
     
-    console.log('[Chaos Twist] Menu button added successfully');
+    console.log('[Chaos Twist] Menu button added');
     return true;
 }
 
 /**
- * Создание UI в панели расширений
+ * Панель настроек расширения
  */
 function setupExtensionPanel() {
-    const context = SillyTavern.getContext();
     const settingsHtml = `
         <div class="chaos_twist_settings">
             <div class="inline-drawer">
@@ -257,7 +244,7 @@ function setupExtensionPanel() {
                     </div>
                     
                     <small class="flex-container">
-                        💡 Also available in the Options menu (☰)
+                        💡 Also available in Options menu (☰)
                     </small>
                 </div>
             </div>
@@ -266,13 +253,11 @@ function setupExtensionPanel() {
     
     $('#extensions_settings').append(settingsHtml);
     
-    // Загружаем текущие значения
     $('#chaos_ext_enabled').prop('checked', settings().isEnabled);
     $('#chaos_ext_notify').prop('checked', settings().showNotifications);
     $('#chaos_ext_slider').val(settings().chance);
     $('#chaos_ext_value').text(`${settings().chance}%`);
     
-    // Обработчики
     $('#chaos_ext_enabled').on('change', function() {
         settings().isEnabled = $(this).prop('checked');
         saveSettingsDebounced();
@@ -294,52 +279,71 @@ function setupExtensionPanel() {
 }
 
 /**
- * Логика обработки промпта
+ * Основная логика - срабатывает перед генерацией
  */
-async function onPromptReady(payload) {
+function onGenerationStarted() {
     const s = settings();
-    if (!s.isEnabled) return;
+    
+    // Сначала очищаем старый промпт
+    setExtensionPrompt(extensionName, '', extension_prompt_types.IN_CHAT, 0);
+    
+    if (!s.isEnabled) {
+        console.log('[Chaos Twist] Disabled, skipping');
+        return;
+    }
 
     const roll = Math.floor(Math.random() * 100) + 1;
+    console.log(`[Chaos Twist] Roll: ${roll}, Need: ${s.chance} or less`);
     
     if (roll <= s.chance) {
         const randomEvent = s.events[Math.floor(Math.random() * s.events.length)];
         
-        payload.push({
-            role: 'system',
-            content: `[IMPORTANT INSTRUCTION: ${randomEvent}]`
-        });
+        // Используем setExtensionPrompt для инъекции в промпт
+        const injectionText = `[OOC: ${randomEvent}]`;
+        
+        setExtensionPrompt(
+            extensionName,           // Уникальный ID расширения
+            injectionText,           // Текст для инъекции
+            extension_prompt_types.IN_CHAT,  // Позиция: в чате
+            0                        // Глубина: 0 = в конце (перед последним сообщением)
+        );
 
         if (s.showNotifications) {
-            toastr.warning(
-                randomEvent.replace('[OOC: ', '').replace(']', ''), 
-                "⚡ Chaos Event!"
-            );
+            toastr.warning(randomEvent, "⚡ Chaos Event!");
         }
         
-        console.log('[Chaos Twist] Event triggered:', randomEvent);
+        console.log('[Chaos Twist] ✓ Event triggered:', randomEvent);
+    } else {
+        console.log('[Chaos Twist] No event this time');
     }
+}
+
+/**
+ * Очистка после генерации
+ */
+function onGenerationEnded() {
+    // Очищаем инъекцию после генерации чтобы не дублировалась
+    setExtensionPrompt(extensionName, '', extension_prompt_types.IN_CHAT, 0);
 }
 
 // Инициализация
 jQuery(async () => {
-    console.log('[Chaos Twist] Loading extension...');
+    console.log('[Chaos Twist] Loading...');
     
     loadSettings();
     setupExtensionPanel();
     
-    // Пробуем добавить кнопку в меню с несколькими попытками
     const tryAddButton = () => {
         if (!addMenuButton()) {
             setTimeout(tryAddButton, 1000);
         }
     };
-    
-    // Первая попытка после небольшой задержки
     setTimeout(tryAddButton, 500);
     
-    // Подписываемся на события
-    eventSource.on(event_types.CHAT_COMPLETION_PROMPT_READY, onPromptReady);
+    // Подписываемся на события генерации
+    eventSource.on(event_types.GENERATION_STARTED, onGenerationStarted);
+    eventSource.on(event_types.GENERATION_ENDED, onGenerationEnded);
+    eventSource.on(event_types.GENERATION_STOPPED, onGenerationEnded);
     
-    console.log('[Chaos Twist] Extension loaded!');
+    console.log('[Chaos Twist] Loaded! Events subscribed.');
 });
