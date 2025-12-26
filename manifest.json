@@ -1,8 +1,12 @@
 {
-    "name": "chaos_twist",
     "display_name": "Chaos Plot Twist",
-    "version": "1.1.0",
-    "description": "Randomly injects OOC plot twists into the AI prompt.",
+    "loading_order": 100,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
     "author": "delidgi",
-    "entrypoint": "index.js"
+    "version": "1.2.0",
+    "homePage": "https://github.com/delidgi/ST-extension-chaos-events",
+    "auto_update": true
 }
