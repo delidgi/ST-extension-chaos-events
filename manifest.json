@@ -1,8 +1,8 @@
 {
-    "name": "Chaos Plot Twist",
-    "display_name": "Chaos Plot Twist Generator",
-    "version": "1.0.0",
-    "description": "Случайно подмешивает OOC команды для создания хаоса и сюжетных поворотов.",
+    "name": "chaos_twist",
+    "display_name": "Chaos Plot Twist",
+    "version": "1.1.0",
+    "description": "Randomly injects OOC plot twists into the AI prompt.",
     "author": "delidgi",
     "entrypoint": "index.js"
 }
