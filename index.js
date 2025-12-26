@@ -34,22 +34,33 @@ const settings = extension_settings[extensionName];
  * Создание кнопки в области ввода сообщения
  */
 function setupInputButton() {
+    console.log('[Chaos Twist] Setting up input button...');
+    
     // Стили для кнопки и выпадающего меню
     const styles = `
         <style id="chaos_twist_styles">
+            #chaos_input_container {
+                position: relative;
+                display: inline-flex;
+                margin: 0 3px;
+                vertical-align: middle;
+            }
+            
             .chaos-input-btn {
                 cursor: pointer;
-                padding: 5px 10px;
+                padding: 3px 8px;
                 border-radius: 5px;
                 display: flex;
                 align-items: center;
-                gap: 5px;
+                gap: 4px;
                 font-size: 12px;
                 transition: all 0.2s ease;
                 position: relative;
-                background: var(--SmartThemeBlurTintColor);
-                border: 1px solid var(--SmartThemeBorderColor);
-                color: var(--SmartThemeBodyColor);
+                background: var(--SmartThemeBlurTintColor, #333);
+                border: 1px solid var(--SmartThemeBorderColor, #555);
+                color: var(--SmartThemeBodyColor, #eee);
+                height: 26px;
+                box-sizing: border-box;
             }
             
             .chaos-input-btn:hover {
@@ -57,7 +68,8 @@ function setupInputButton() {
             }
             
             .chaos-input-btn.active {
-                background: var(--SmartThemeQuoteColor);
+                background: #e67e22;
+                border-color: #d35400;
                 color: white;
             }
             
@@ -67,11 +79,12 @@ function setupInputButton() {
             
             .chaos-input-btn .chaos-chance-badge {
                 background: rgba(255,255,255,0.2);
-                padding: 2px 6px;
+                padding: 1px 5px;
                 border-radius: 3px;
                 font-weight: bold;
-                min-width: 32px;
+                min-width: 28px;
                 text-align: center;
+                font-size: 11px;
             }
             
             .chaos-dropdown {
@@ -81,21 +94,21 @@ function setupInputButton() {
                 left: 50%;
                 transform: translateX(-50%);
                 margin-bottom: 8px;
-                background: var(--SmartThemeBlurTintColor);
-                border: 1px solid var(--SmartThemeBorderColor);
+                background: var(--SmartThemeBlurTintColor, #2a2a2a);
+                border: 1px solid var(--SmartThemeBorderColor, #555);
                 border-radius: 8px;
                 padding: 10px;
-                z-index: 9999;
-                min-width: 180px;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                z-index: 99999;
+                min-width: 200px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             }
             
             .chaos-dropdown.show {
                 display: block;
-                animation: fadeIn 0.15s ease;
+                animation: chaosFadeIn 0.15s ease;
             }
             
-            @keyframes fadeIn {
+            @keyframes chaosFadeIn {
                 from { opacity: 0; transform: translateX(-50%) translateY(5px); }
                 to { opacity: 1; transform: translateX(-50%) translateY(0); }
             }
@@ -104,26 +117,26 @@ function setupInputButton() {
                 font-weight: bold;
                 margin-bottom: 8px;
                 text-align: center;
-                color: var(--SmartThemeBodyColor);
+                color: var(--SmartThemeBodyColor, #eee);
                 font-size: 12px;
             }
             
             .chaos-quick-buttons {
                 display: flex;
-                gap: 5px;
+                gap: 4px;
                 flex-wrap: wrap;
                 justify-content: center;
                 margin-bottom: 10px;
             }
             
             .chaos-quick-btn {
-                padding: 5px 10px;
-                border-radius: 5px;
+                padding: 4px 8px;
+                border-radius: 4px;
                 cursor: pointer;
                 font-size: 11px;
-                background: var(--SmartThemeBlurTintColor);
-                border: 1px solid var(--SmartThemeBorderColor);
-                color: var(--SmartThemeBodyColor);
+                background: var(--SmartThemeBlurTintColor, #333);
+                border: 1px solid var(--SmartThemeBorderColor, #555);
+                color: var(--SmartThemeBodyColor, #eee);
                 transition: all 0.15s ease;
             }
             
@@ -132,7 +145,8 @@ function setupInputButton() {
             }
             
             .chaos-quick-btn.selected {
-                background: var(--SmartThemeQuoteColor);
+                background: #e67e22;
+                border-color: #d35400;
                 color: white;
             }
             
@@ -145,6 +159,7 @@ function setupInputButton() {
             .chaos-slider-container input[type="range"] {
                 flex: 1;
                 height: 6px;
+                cursor: pointer;
             }
             
             .chaos-slider-value {
@@ -152,27 +167,22 @@ function setupInputButton() {
                 text-align: center;
                 font-weight: bold;
                 font-size: 12px;
-            }
-            
-            .chaos-toggle-row {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                margin-top: 10px;
-                padding-top: 10px;
-                border-top: 1px solid var(--SmartThemeBorderColor);
-                font-size: 11px;
+                color: var(--SmartThemeBodyColor, #eee);
             }
         </style>
     `;
+    
+    // Удаляем старые стили если есть
+    $('#chaos_twist_styles').remove();
+    $('#chaos_input_container').remove();
     
     // Добавляем стили
     $('head').append(styles);
     
     // HTML кнопки
     const buttonHtml = `
-        <div id="chaos_input_container" style="position: relative; display: inline-flex;">
-            <div class="chaos-input-btn ${settings.isEnabled ? 'active' : ''}" id="chaos_toggle_btn" title="Chaos Events">
+        <div id="chaos_input_container">
+            <div class="chaos-input-btn ${settings.isEnabled ? 'active' : ''}" id="chaos_toggle_btn" title="Chaos Events - Click to set chance">
                 <span class="chaos-icon">⚡</span>
                 <span class="chaos-chance-badge" id="chaos_badge">${settings.isEnabled ? settings.chance + '%' : 'OFF'}</span>
             </div>
@@ -194,39 +204,82 @@ function setupInputButton() {
         </div>
     `;
     
-    // Находим панель с кнопками ввода и добавляем нашу кнопку
-    // Пробуем разные селекторы для совместимости
-    const targetSelectors = [
-        '#leftSendForm',           // Левая часть формы отправки
-        '#send_form .send_form_inner', 
-        '#send_form',
-        '.send_form_inner',
-        '#data_bank_wand'          // Рядом с другими кнопками расширений
+    // Список селекторов для попытки вставки (в порядке приоритета)
+    const insertionPoints = [
+        // Рядом с иконками действий в форме отправки
+        { selector: '#leftSendForm', method: 'append' },
+        { selector: '#send_but_sheld', method: 'before' },
+        { selector: '#send_button', method: 'before' },
+        { selector: '#mes_send', method: 'before' },
+        { selector: '#send_form > div:first-child', method: 'append' },
+        { selector: '#send_form', method: 'prepend' },
+        { selector: '#form_sheld', method: 'prepend' },
+        { selector: '.send_form', method: 'prepend' },
+        // Рядом с другими кнопками расширений
+        { selector: '#data_bank_wand', method: 'before' },
+        { selector: '#option_regenerate', method: 'after' },
+        { selector: '#options_button', method: 'before' },
     ];
     
     let inserted = false;
     
-    // Пробуем вставить рядом с кнопкой расширений или в начало формы
-    const extensionsButton = $('#data_bank_wand, #extensionsMenuButton, .drawer-icon.fa-cubes').first();
-    if (extensionsButton.length) {
-        extensionsButton.before(buttonHtml);
-        inserted = true;
-    }
-    
-    // Если не нашли кнопку расширений, пробуем другие места
-    if (!inserted) {
-        for (const selector of targetSelectors) {
-            const target = $(selector);
-            if (target.length) {
-                target.prepend(buttonHtml);
-                inserted = true;
-                break;
+    for (const point of insertionPoints) {
+        const $target = $(point.selector);
+        if ($target.length > 0) {
+            console.log(`[Chaos Twist] Found target: ${point.selector}, using method: ${point.method}`);
+            
+            if (point.method === 'append') {
+                $target.append(buttonHtml);
+            } else if (point.method === 'prepend') {
+                $target.prepend(buttonHtml);
+            } else if (point.method === 'before') {
+                $target.before(buttonHtml);
+            } else if (point.method === 'after') {
+                $target.after(buttonHtml);
             }
+            
+            inserted = true;
+            break;
         }
     }
     
-    // Обработчики событий
-    setupInputButtonEvents();
+    if (!inserted) {
+        console.warn('[Chaos Twist] Could not find suitable insertion point! Adding fixed button...');
+        // Последняя попытка - добавить фиксированную кнопку
+        const fixedButton = `
+            <div id="chaos_input_container" style="position: fixed; bottom: 80px; right: 20px; z-index: 99999;">
+                <div class="chaos-input-btn ${settings.isEnabled ? 'active' : ''}" id="chaos_toggle_btn" title="Chaos Events">
+                    <span class="chaos-icon">⚡</span>
+                    <span class="chaos-chance-badge" id="chaos_badge">${settings.isEnabled ? settings.chance + '%' : 'OFF'}</span>
+                </div>
+                <div class="chaos-dropdown" id="chaos_dropdown">
+                    <div class="chaos-dropdown-title">🎲 Chaos Chance</div>
+                    <div class="chaos-quick-buttons">
+                        <div class="chaos-quick-btn" data-chance="0">OFF</div>
+                        <div class="chaos-quick-btn" data-chance="5">5%</div>
+                        <div class="chaos-quick-btn" data-chance="10">10%</div>
+                        <div class="chaos-quick-btn" data-chance="25">25%</div>
+                        <div class="chaos-quick-btn" data-chance="50">50%</div>
+                        <div class="chaos-quick-btn" data-chance="100">100%</div>
+                    </div>
+                    <div class="chaos-slider-container">
+                        <input type="range" id="chaos_input_slider" min="0" max="100" step="1" value="${settings.chance}">
+                        <span class="chaos-slider-value" id="chaos_slider_value">${settings.chance}%</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        $('body').append(fixedButton);
+        console.log('[Chaos Twist] Added fixed button to body');
+    }
+    
+    // Проверяем что кнопка создалась
+    if ($('#chaos_toggle_btn').length) {
+        console.log('[Chaos Twist] Button successfully created!');
+        setupInputButtonEvents();
+    } else {
+        console.error('[Chaos Twist] Failed to create button!');
+    }
 }
 
 /**
@@ -238,14 +291,16 @@ function setupInputButtonEvents() {
     const $badge = $('#chaos_badge');
     
     // Клик по кнопке - показать/скрыть меню
-    $btn.on('click', function(e) {
+    $btn.off('click').on('click', function(e) {
+        e.preventDefault();
         e.stopPropagation();
         $dropdown.toggleClass('show');
         updateQuickButtonSelection();
     });
     
     // Быстрые кнопки выбора шанса
-    $('.chaos-quick-btn').on('click', function(e) {
+    $(document).off('click', '.chaos-quick-btn').on('click', '.chaos-quick-btn', function(e) {
+        e.preventDefault();
         e.stopPropagation();
         const chance = parseInt($(this).data('chance'));
         
@@ -260,19 +315,18 @@ function setupInputButtonEvents() {
             $badge.text(chance + '%');
         }
         
-        // Обновляем слайдер
         $('#chaos_input_slider').val(chance);
         $('#chaos_slider_value').text(chance + '%');
         
-        // Синхронизируем с панелью настроек
         syncSettingsPanel();
         saveSettingsDebounced();
-        
         updateQuickButtonSelection();
+        
+        console.log(`[Chaos Twist] Chance set to: ${chance}%`);
     });
     
     // Слайдер
-    $('#chaos_input_slider').on('input', function(e) {
+    $(document).off('input', '#chaos_input_slider').on('input', '#chaos_input_slider', function(e) {
         e.stopPropagation();
         const value = parseInt($(this).val());
         
@@ -295,7 +349,7 @@ function setupInputButtonEvents() {
     });
     
     // Закрытие при клике вне меню
-    $(document).on('click', function(e) {
+    $(document).off('click.chaosDropdown').on('click.chaosDropdown', function(e) {
         if (!$(e.target).closest('#chaos_input_container').length) {
             $dropdown.removeClass('show');
         }
@@ -311,7 +365,10 @@ function updateQuickButtonSelection() {
     if (!settings.isEnabled) {
         $('.chaos-quick-btn[data-chance="0"]').addClass('selected');
     } else {
-        $(`.chaos-quick-btn[data-chance="${settings.chance}"]`).addClass('selected');
+        const $exactMatch = $(`.chaos-quick-btn[data-chance="${settings.chance}"]`);
+        if ($exactMatch.length) {
+            $exactMatch.addClass('selected');
+        }
     }
 }
 
@@ -331,6 +388,8 @@ function syncInputButton() {
     const $btn = $('#chaos_toggle_btn');
     const $badge = $('#chaos_badge');
     
+    if (!$btn.length) return;
+    
     if (settings.isEnabled) {
         $btn.addClass('active');
         $badge.text(settings.chance + '%');
@@ -347,7 +406,6 @@ function syncInputButton() {
  * Создание UI в панели расширений
  */
 function setupUI() {
-    // Создаем основной контейнер расширения
     const html = `
         <div class="chaos_twist_settings extension_container">
             <div class="inline-drawer">
@@ -382,7 +440,7 @@ function setupUI() {
                     <div class="setup_item">
                         <small>Injects unpredictable OOC commands into the prompt.</small>
                         <br>
-                        <small>💡 Use the ⚡ button near input field for quick access!</small>
+                        <small>💡 Look for the ⚡ button near the input field!</small>
                     </div>
                 </div>
             </div>
@@ -391,7 +449,6 @@ function setupUI() {
 
     extensionContainer.append(html);
 
-    // Слушатели событий интерфейса
     $('#chaos_enabled').on('change', function() {
         settings.isEnabled = !!$(this).prop('checked');
         syncInputButton();
@@ -434,17 +491,30 @@ async function onPromptReady(payload) {
                 "⚡ Chaos Event Triggered!"
             );
         }
+        
+        console.log('[Chaos Twist] Event triggered:', randomEvent);
     }
 }
 
 // Запуск
-$(document).ready(function() {
+jQuery(async () => {
+    console.log('[Chaos Twist] Extension loading...');
+    
     setupUI();
     
-    // Небольшая задержка для загрузки интерфейса ST
-    setTimeout(() => {
-        setupInputButton();
-    }, 1000);
+    // Несколько попыток с разными задержками
+    const delays = [500, 1500, 3000, 5000];
+    
+    for (const delay of delays) {
+        setTimeout(() => {
+            if (!$('#chaos_toggle_btn').length) {
+                console.log(`[Chaos Twist] Attempting button setup after ${delay}ms...`);
+                setupInputButton();
+            }
+        }, delay);
+    }
     
     eventSource.on(event_types.CHAT_COMPLETION_PROMPT_READY, onPromptReady);
+    
+    console.log('[Chaos Twist] Extension loaded!');
 });
