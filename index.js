@@ -9,7 +9,7 @@ import {
 } from '../../../extensions.js';
 
 const extensionName = "chaos_twist";
-const extensionContainer = $('#extensions_settings');
+const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
 
 // Дефолтные настройки
 const defaultSettings = {
@@ -24,308 +24,272 @@ const defaultSettings = {
     ]
 };
 
-// Инициализация настроек в объекте расширений ST
-if (!extension_settings[extensionName]) {
-    extension_settings[extensionName] = defaultSettings;
+// Инициализация настроек
+function loadSettings() {
+    if (!extension_settings[extensionName]) {
+        extension_settings[extensionName] = {};
+    }
+    
+    // Мержим с дефолтами
+    for (const key in defaultSettings) {
+        if (extension_settings[extensionName][key] === undefined) {
+            extension_settings[extensionName][key] = defaultSettings[key];
+        }
+    }
 }
-const settings = extension_settings[extensionName];
+
+const settings = () => extension_settings[extensionName];
 
 /**
- * Создание кнопки в области ввода сообщения
+ * Получить текст для кнопки меню
  */
-function setupInputButton() {
-    console.log('[Chaos Twist] Setting up input button...');
+function getMenuButtonText() {
+    const s = settings();
+    if (!s.isEnabled) {
+        return '⚡ Chaos: OFF';
+    }
+    return `⚡ Chaos: ${s.chance}%`;
+}
+
+/**
+ * Показать popup для выбора шанса
+ */
+async function showChancePopup() {
+    const s = settings();
     
-    // Удаляем старую кнопку если есть
-    $('#chaos_input_container').remove();
-    
-    // HTML кнопки
-    const buttonHtml = `
-        <div id="chaos_input_container">
-            <div class="chaos-input-btn ${settings.isEnabled ? 'active' : ''}" id="chaos_toggle_btn" title="Chaos Events - Click to set chance">
-                <span class="chaos-icon">⚡</span>
-                <span class="chaos-chance-badge" id="chaos_badge">${settings.isEnabled ? settings.chance + '%' : 'OFF'}</span>
+    const html = `
+        <div class="chaos-popup-content">
+            <h3 style="margin-top: 0;">⚡ Chaos Plot Twist</h3>
+            
+            <div style="margin-bottom: 15px;">
+                <label class="checkbox_label" style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="chaos_popup_enabled" ${s.isEnabled ? 'checked' : ''}>
+                    <span>Enable Chaos Events</span>
+                </label>
             </div>
-            <div class="chaos-dropdown" id="chaos_dropdown">
-                <div class="chaos-dropdown-title">🎲 Chaos Chance</div>
-                <div class="chaos-quick-buttons">
-                    <div class="chaos-quick-btn" data-chance="0">OFF</div>
-                    <div class="chaos-quick-btn" data-chance="5">5%</div>
-                    <div class="chaos-quick-btn" data-chance="10">10%</div>
-                    <div class="chaos-quick-btn" data-chance="25">25%</div>
-                    <div class="chaos-quick-btn" data-chance="50">50%</div>
-                    <div class="chaos-quick-btn" data-chance="100">100%</div>
-                </div>
-                <div class="chaos-slider-container">
-                    <input type="range" id="chaos_input_slider" min="0" max="100" step="1" value="${settings.chance}">
-                    <span class="chaos-slider-value" id="chaos_slider_value">${settings.chance}%</span>
-                </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px;">
+                    Trigger Chance: <strong id="chaos_popup_value">${s.chance}%</strong>
+                </label>
+                <input type="range" id="chaos_popup_slider" min="0" max="100" step="5" value="${s.chance}" 
+                       style="width: 100%;">
             </div>
+            
+            <div style="display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 15px;">
+                <button class="chaos-preset-btn menu_button" data-value="0">OFF</button>
+                <button class="chaos-preset-btn menu_button" data-value="5">5%</button>
+                <button class="chaos-preset-btn menu_button" data-value="10">10%</button>
+                <button class="chaos-preset-btn menu_button" data-value="25">25%</button>
+                <button class="chaos-preset-btn menu_button" data-value="50">50%</button>
+                <button class="chaos-preset-btn menu_button" data-value="100">100%</button>
+            </div>
+            
+            <div style="margin-bottom: 10px;">
+                <label class="checkbox_label" style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="chaos_popup_notify" ${s.showNotifications ? 'checked' : ''}>
+                    <span>Show Notifications</span>
+                </label>
+            </div>
+            
+            <p style="font-size: 0.85em; opacity: 0.7; margin-bottom: 0;">
+                Randomly injects OOC plot twist commands into the prompt.
+            </p>
         </div>
     `;
     
-    // Список селекторов для попытки вставки (в порядке приоритета)
-    const insertionPoints = [
-        // Рядом с иконками действий в форме отправки
-        { selector: '#leftSendForm', method: 'append' },
-        { selector: '#send_but_sheld', method: 'before' },
-        { selector: '#send_button', method: 'before' },
-        { selector: '#mes_send', method: 'before' },
-        { selector: '#send_form > div:first-child', method: 'append' },
-        { selector: '#send_form', method: 'prepend' },
-        { selector: '#form_sheld', method: 'prepend' },
-        { selector: '.send_form', method: 'prepend' },
-        // Рядом с другими кнопками расширений
-        { selector: '#data_bank_wand', method: 'before' },
-        { selector: '#option_regenerate', method: 'after' },
-        { selector: '#options_button', method: 'before' },
-    ];
+    const { Popup, POPUP_TYPE } = SillyTavern.getContext();
     
-    let inserted = false;
+    const popup = new Popup(html, POPUP_TYPE.TEXT, '', {
+        okButton: 'Save',
+        cancelButton: 'Cancel',
+        wide: false,
+        large: false,
+    });
     
-    for (const point of insertionPoints) {
-        const $target = $(point.selector);
-        if ($target.length > 0) {
-            console.log(`[Chaos Twist] Found target: ${point.selector}, using method: ${point.method}`);
-            
-            if (point.method === 'append') {
-                $target.append(buttonHtml);
-            } else if (point.method === 'prepend') {
-                $target.prepend(buttonHtml);
-            } else if (point.method === 'before') {
-                $target.before(buttonHtml);
-            } else if (point.method === 'after') {
-                $target.after(buttonHtml);
-            }
-            
-            inserted = true;
-            break;
+    // Настраиваем обработчики после показа popup
+    popup.show().then(() => {
+        // Popup закрыт - ничего не делаем
+    });
+    
+    // Ждём появления popup в DOM
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const slider = document.getElementById('chaos_popup_slider');
+    const valueDisplay = document.getElementById('chaos_popup_value');
+    const enabledCheckbox = document.getElementById('chaos_popup_enabled');
+    const notifyCheckbox = document.getElementById('chaos_popup_notify');
+    
+    if (slider) {
+        slider.addEventListener('input', () => {
+            valueDisplay.textContent = `${slider.value}%`;
+        });
+    }
+    
+    // Пресет кнопки
+    document.querySelectorAll('.chaos-preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const value = parseInt(btn.dataset.value);
+            if (slider) slider.value = value;
+            if (valueDisplay) valueDisplay.textContent = `${value}%`;
+            if (enabledCheckbox) enabledCheckbox.checked = value > 0;
+        });
+    });
+    
+    // Ждём закрытия popup
+    const result = await popup.promise;
+    
+    if (result) {
+        // Сохраняем настройки
+        const s = settings();
+        s.isEnabled = enabledCheckbox?.checked ?? s.isEnabled;
+        s.chance = parseInt(slider?.value ?? s.chance);
+        s.showNotifications = notifyCheckbox?.checked ?? s.showNotifications;
+        
+        // Если шанс 0, выключаем
+        if (s.chance === 0) {
+            s.isEnabled = false;
         }
-    }
-    
-    if (!inserted) {
-        console.warn('[Chaos Twist] Could not find suitable insertion point! Adding fixed button...');
-        // Последняя попытка - добавить фиксированную кнопку
-        const fixedButton = `
-            <div id="chaos_input_container" class="chaos-fixed">
-                <div class="chaos-input-btn ${settings.isEnabled ? 'active' : ''}" id="chaos_toggle_btn" title="Chaos Events">
-                    <span class="chaos-icon">⚡</span>
-                    <span class="chaos-chance-badge" id="chaos_badge">${settings.isEnabled ? settings.chance + '%' : 'OFF'}</span>
-                </div>
-                <div class="chaos-dropdown" id="chaos_dropdown">
-                    <div class="chaos-dropdown-title">🎲 Chaos Chance</div>
-                    <div class="chaos-quick-buttons">
-                        <div class="chaos-quick-btn" data-chance="0">OFF</div>
-                        <div class="chaos-quick-btn" data-chance="5">5%</div>
-                        <div class="chaos-quick-btn" data-chance="10">10%</div>
-                        <div class="chaos-quick-btn" data-chance="25">25%</div>
-                        <div class="chaos-quick-btn" data-chance="50">50%</div>
-                        <div class="chaos-quick-btn" data-chance="100">100%</div>
-                    </div>
-                    <div class="chaos-slider-container">
-                        <input type="range" id="chaos_input_slider" min="0" max="100" step="1" value="${settings.chance}">
-                        <span class="chaos-slider-value" id="chaos_slider_value">${settings.chance}%</span>
-                    </div>
-                </div>
-            </div>
-        `;
-        $('body').append(fixedButton);
-        console.log('[Chaos Twist] Added fixed button to body');
-    }
-    
-    // Проверяем что кнопка создалась
-    if ($('#chaos_toggle_btn').length) {
-        console.log('[Chaos Twist] Button successfully created!');
-        setupInputButtonEvents();
-    } else {
-        console.error('[Chaos Twist] Failed to create button!');
+        
+        saveSettingsDebounced();
+        updateMenuButton();
+        
+        toastr.success(`Chaos: ${s.isEnabled ? s.chance + '%' : 'OFF'}`, 'Settings saved');
     }
 }
 
 /**
- * Настройка событий кнопки
+ * Обновить текст кнопки в меню
  */
-function setupInputButtonEvents() {
-    const $btn = $('#chaos_toggle_btn');
-    const $dropdown = $('#chaos_dropdown');
-    const $badge = $('#chaos_badge');
+function updateMenuButton() {
+    const menuItem = document.getElementById('chaos_menu_item');
+    if (menuItem) {
+        const span = menuItem.querySelector('span');
+        if (span) {
+            span.textContent = getMenuButtonText();
+        }
+    }
+}
+
+/**
+ * Добавить кнопку в меню опций (бургер меню)
+ */
+function addMenuButton() {
+    // Ищем выпадающее меню опций
+    const optionsMenu = document.getElementById('options');
     
-    // Клик по кнопке - показать/скрыть меню
-    $btn.off('click').on('click', function(e) {
+    if (!optionsMenu) {
+        console.warn('[Chaos Twist] Options menu not found, retrying...');
+        return false;
+    }
+    
+    // Проверяем не добавлена ли уже кнопка
+    if (document.getElementById('chaos_menu_item')) {
+        return true;
+    }
+    
+    // Создаём элемент меню в стиле ST
+    const menuItem = document.createElement('a');
+    menuItem.id = 'chaos_menu_item';
+    menuItem.classList.add('list-group-item', 'flex-container', 'flexGap5');
+    menuItem.title = 'Configure Chaos Plot Twist';
+    menuItem.innerHTML = `
+        <i class="fa-solid fa-bolt"></i>
+        <span>${getMenuButtonText()}</span>
+    `;
+    
+    menuItem.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        $dropdown.toggleClass('show');
-        updateQuickButtonSelection();
+        // Закрываем меню
+        const optionsButton = document.getElementById('options_button');
+        if (optionsButton) optionsButton.click();
+        // Показываем popup
+        showChancePopup();
     });
     
-    // Быстрые кнопки выбора шанса
-    $(document).off('click', '.chaos-quick-btn').on('click', '.chaos-quick-btn', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const chance = parseInt($(this).data('chance'));
-        
-        if (chance === 0) {
-            settings.isEnabled = false;
-            $btn.removeClass('active');
-            $badge.text('OFF');
-        } else {
-            settings.isEnabled = true;
-            settings.chance = chance;
-            $btn.addClass('active');
-            $badge.text(chance + '%');
-        }
-        
-        $('#chaos_input_slider').val(chance);
-        $('#chaos_slider_value').text(chance + '%');
-        
-        syncSettingsPanel();
-        saveSettingsDebounced();
-        updateQuickButtonSelection();
-        
-        console.log(`[Chaos Twist] Chance set to: ${chance}%`);
-    });
-    
-    // Слайдер
-    $(document).off('input', '#chaos_input_slider').on('input', '#chaos_input_slider', function(e) {
-        e.stopPropagation();
-        const value = parseInt($(this).val());
-        
-        if (value === 0) {
-            settings.isEnabled = false;
-            $btn.removeClass('active');
-            $badge.text('OFF');
-        } else {
-            settings.isEnabled = true;
-            settings.chance = value;
-            $btn.addClass('active');
-            $badge.text(value + '%');
-        }
-        
-        $('#chaos_slider_value').text(value + '%');
-        
-        syncSettingsPanel();
-        saveSettingsDebounced();
-        updateQuickButtonSelection();
-    });
-    
-    // Закрытие при клике вне меню
-    $(document).off('click.chaosDropdown').on('click.chaosDropdown', function(e) {
-        if (!$(e.target).closest('#chaos_input_container').length) {
-            $dropdown.removeClass('show');
-        }
-    });
-}
-
-/**
- * Обновление выделения быстрых кнопок
- */
-function updateQuickButtonSelection() {
-    $('.chaos-quick-btn').removeClass('selected');
-    
-    if (!settings.isEnabled) {
-        $('.chaos-quick-btn[data-chance="0"]').addClass('selected');
+    // Добавляем в начало меню (после заголовка если есть)
+    const firstItem = optionsMenu.querySelector('.list-group-item');
+    if (firstItem) {
+        optionsMenu.insertBefore(menuItem, firstItem);
     } else {
-        const $exactMatch = $(`.chaos-quick-btn[data-chance="${settings.chance}"]`);
-        if ($exactMatch.length) {
-            $exactMatch.addClass('selected');
-        }
-    }
-}
-
-/**
- * Синхронизация с панелью настроек расширений
- */
-function syncSettingsPanel() {
-    $('#chaos_enabled').prop('checked', settings.isEnabled);
-    $('#chaos_chance').val(settings.chance);
-    $('#chaos_chance_display').text(`${settings.chance}%`);
-}
-
-/**
- * Синхронизация кнопки с панелью настроек
- */
-function syncInputButton() {
-    const $btn = $('#chaos_toggle_btn');
-    const $badge = $('#chaos_badge');
-    
-    if (!$btn.length) return;
-    
-    if (settings.isEnabled) {
-        $btn.addClass('active');
-        $badge.text(settings.chance + '%');
-    } else {
-        $btn.removeClass('active');
-        $badge.text('OFF');
+        optionsMenu.appendChild(menuItem);
     }
     
-    $('#chaos_input_slider').val(settings.chance);
-    $('#chaos_slider_value').text(settings.chance + '%');
+    console.log('[Chaos Twist] Menu button added successfully');
+    return true;
 }
 
 /**
  * Создание UI в панели расширений
  */
-function setupUI() {
-    const html = `
-        <div class="chaos_twist_settings extension_container">
+function setupExtensionPanel() {
+    const context = SillyTavern.getContext();
+    const settingsHtml = `
+        <div class="chaos_twist_settings">
             <div class="inline-drawer">
-                <div class="inline-drawer-header">
-                    <div class="inline-drawer-icon fa-solid fa-bolt"></div>
-                    <div class="inline-drawer-title">Chaos Plot Twist</div>
-                    <div class="inline-drawer-icon fa-solid fa-chevron-down"></div>
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <b>Chaos Plot Twist</b>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
                 </div>
                 <div class="inline-drawer-content">
-                    <div class="setup_item">
-                        <label class="checkbox_label" for="chaos_enabled">
-                            <input type="checkbox" id="chaos_enabled" ${settings.isEnabled ? 'checked' : ''}>
-                            Enable Chaos Events
-                        </label>
-                    </div>
-
-                    <div class="setup_item">
-                        <div class="flex-container">
-                            <span>Trigger Chance:</span>
-                            <span id="chaos_chance_display">${settings.chance}%</span>
-                        </div>
-                        <input type="range" id="chaos_chance" min="1" max="100" step="1" value="${settings.chance}">
-                    </div>
-
-                    <div class="setup_item">
-                        <label class="checkbox_label" for="chaos_notify">
-                            <input type="checkbox" id="chaos_notify" ${settings.showNotifications ? 'checked' : ''}>
-                            Show Notifications
+                    <div class="flex-container">
+                        <label class="checkbox_label">
+                            <input type="checkbox" id="chaos_ext_enabled">
+                            <span>Enable Chaos Events</span>
                         </label>
                     </div>
                     
-                    <div class="setup_item">
-                        <small>Injects unpredictable OOC commands into the prompt.</small>
-                        <br>
-                        <small>💡 Look for the ⚡ button near the input field!</small>
+                    <div class="flex-container flexFlowColumn">
+                        <label>
+                            <span>Trigger Chance: </span>
+                            <strong id="chaos_ext_value">${settings().chance}%</strong>
+                        </label>
+                        <input type="range" id="chaos_ext_slider" min="0" max="100" step="1" 
+                               value="${settings().chance}" class="neo-range-slider">
                     </div>
+                    
+                    <div class="flex-container">
+                        <label class="checkbox_label">
+                            <input type="checkbox" id="chaos_ext_notify">
+                            <span>Show Notifications</span>
+                        </label>
+                    </div>
+                    
+                    <small class="flex-container">
+                        💡 Also available in the Options menu (☰)
+                    </small>
                 </div>
             </div>
         </div>
     `;
-
-    extensionContainer.append(html);
-
-    $('#chaos_enabled').on('change', function() {
-        settings.isEnabled = !!$(this).prop('checked');
-        syncInputButton();
+    
+    $('#extensions_settings').append(settingsHtml);
+    
+    // Загружаем текущие значения
+    $('#chaos_ext_enabled').prop('checked', settings().isEnabled);
+    $('#chaos_ext_notify').prop('checked', settings().showNotifications);
+    $('#chaos_ext_slider').val(settings().chance);
+    $('#chaos_ext_value').text(`${settings().chance}%`);
+    
+    // Обработчики
+    $('#chaos_ext_enabled').on('change', function() {
+        settings().isEnabled = $(this).prop('checked');
+        saveSettingsDebounced();
+        updateMenuButton();
+    });
+    
+    $('#chaos_ext_notify').on('change', function() {
+        settings().showNotifications = $(this).prop('checked');
         saveSettingsDebounced();
     });
-
-    $('#chaos_notify').on('change', function() {
-        settings.showNotifications = !!$(this).prop('checked');
-        saveSettingsDebounced();
-    });
-
-    $('#chaos_chance').on('input', function() {
+    
+    $('#chaos_ext_slider').on('input', function() {
         const value = $(this).val();
-        settings.chance = parseInt(value);
-        $('#chaos_chance_display').text(`${value}%`);
-        syncInputButton();
+        settings().chance = parseInt(value);
+        $('#chaos_ext_value').text(`${value}%`);
         saveSettingsDebounced();
+        updateMenuButton();
     });
 }
 
@@ -333,22 +297,23 @@ function setupUI() {
  * Логика обработки промпта
  */
 async function onPromptReady(payload) {
-    if (!settings.isEnabled) return;
+    const s = settings();
+    if (!s.isEnabled) return;
 
     const roll = Math.floor(Math.random() * 100) + 1;
     
-    if (roll <= settings.chance) {
-        const randomEvent = settings.events[Math.floor(Math.random() * settings.events.length)];
+    if (roll <= s.chance) {
+        const randomEvent = s.events[Math.floor(Math.random() * s.events.length)];
         
         payload.push({
             role: 'system',
             content: `[IMPORTANT INSTRUCTION: ${randomEvent}]`
         });
 
-        if (settings.showNotifications) {
+        if (s.showNotifications) {
             toastr.warning(
                 randomEvent.replace('[OOC: ', '').replace(']', ''), 
-                "⚡ Chaos Event Triggered!"
+                "⚡ Chaos Event!"
             );
         }
         
@@ -356,24 +321,24 @@ async function onPromptReady(payload) {
     }
 }
 
-// Запуск
+// Инициализация
 jQuery(async () => {
-    console.log('[Chaos Twist] Extension loading...');
+    console.log('[Chaos Twist] Loading extension...');
     
-    setupUI();
+    loadSettings();
+    setupExtensionPanel();
     
-    // Несколько попыток с разными задержками
-    const delays = [500, 1500, 3000, 5000];
+    // Пробуем добавить кнопку в меню с несколькими попытками
+    const tryAddButton = () => {
+        if (!addMenuButton()) {
+            setTimeout(tryAddButton, 1000);
+        }
+    };
     
-    for (const delay of delays) {
-        setTimeout(() => {
-            if (!$('#chaos_toggle_btn').length) {
-                console.log(`[Chaos Twist] Attempting button setup after ${delay}ms...`);
-                setupInputButton();
-            }
-        }, delay);
-    }
+    // Первая попытка после небольшой задержки
+    setTimeout(tryAddButton, 500);
     
+    // Подписываемся на события
     eventSource.on(event_types.CHAT_COMPLETION_PROMPT_READY, onPromptReady);
     
     console.log('[Chaos Twist] Extension loaded!');
