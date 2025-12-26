@@ -4,12 +4,14 @@ import {
     saveSettingsDebounced
 } from '../../../../script.js';
 import { 
-    getContext,
-    extension_settings
+    extension_settings,
+    getContext
 } from '../../../extensions.js';
 
-
 const extensionName = "chaos_twist";
+const extensionContainer = $('#extensions_settings');
+
+// Дефолтные настройки
 const defaultSettings = {
     isEnabled: true,
     chance: 10,
@@ -22,69 +24,80 @@ const defaultSettings = {
     ]
 };
 
-
+// Инициализация настроек в объекте расширений ST
 if (!extension_settings[extensionName]) {
     extension_settings[extensionName] = defaultSettings;
 }
 const settings = extension_settings[extensionName];
 
-
-function createSettingsUI() {
-    const settingsHtml = `
-        <div class="chaos-twist-settings">
+/**
+ * Создание UI в панели расширений
+ */
+function setupUI() {
+    // Создаем основной контейнер расширения
+    const html = `
+        <div class="chaos_twist_settings extension_container">
             <div class="inline-drawer">
                 <div class="inline-drawer-header">
-                    <b>Chaos Plot Twist</b>
+                    <div class="inline-drawer-icon fa-solid fa-bolt"></div>
+                    <div class="inline-drawer-title">Chaos Plot Twist</div>
+                    <div class="inline-drawer-icon fa-solid fa-chevron-down"></div>
                 </div>
                 <div class="inline-drawer-content">
                     <div class="setup_item">
-                        <label class="checkbox_label">
-                            <input type="checkbox" id="chaos_twist_enabled" ${settings.isEnabled ? 'checked' : ''}>
+                        <label class="checkbox_label" for="chaos_enabled">
+                            <input type="checkbox" id="chaos_enabled" ${settings.isEnabled ? 'checked' : ''}>
                             Enable Chaos Events
                         </label>
                     </div>
-                    
+
                     <div class="setup_item">
-                        <label for="chaos_twist_chance">Trigger Chance: <span id="chaos_twist_chance_val">${settings.chance}</span>%</label>
-                        <input type="range" id="chaos_twist_chance" min="1" max="100" step="1" value="${settings.chance}">
+                        <div class="flex-container">
+                            <span>Trigger Chance:</span>
+                            <span id="chaos_chance_display">${settings.chance}%</span>
+                        </div>
+                        <input type="range" id="chaos_chance" min="1" max="100" step="1" value="${settings.chance}">
                     </div>
 
                     <div class="setup_item">
-                        <label class="checkbox_label">
-                            <input type="checkbox" id="chaos_twist_notify" ${settings.showNotifications ? 'checked' : ''}>
-                            Show Notifications (Toasts)
+                        <label class="checkbox_label" for="chaos_notify">
+                            <input type="checkbox" id="chaos_notify" ${settings.showNotifications ? 'checked' : ''}>
+                            Show Notifications
                         </label>
                     </div>
                     
-                    <small>Events are injected as system OOC notes during generation.</small>
+                    <div class="setup_item">
+                        <small>Injects unpredictable OOC commands into the prompt.</small>
+                    </div>
                 </div>
             </div>
         </div>
     `;
 
-    
-    $('#extensions_settings').append(settingsHtml);
+    extensionContainer.append(html);
 
-    
-    $('#chaos_twist_enabled').on('change', function() {
+    // Слушатели событий интерфейса
+    $('#chaos_enabled').on('change', function() {
         settings.isEnabled = !!$(this).prop('checked');
         saveSettingsDebounced();
     });
 
-    $('#chaos_twist_notify').on('change', function() {
+    $('#chaos_notify').on('change', function() {
         settings.showNotifications = !!$(this).prop('checked');
         saveSettingsDebounced();
     });
 
-    $('#chaos_twist_chance').on('input', function() {
-        const val = $(this).val();
-        settings.chance = parseInt(val);
-        $('#chaos_twist_chance_val').text(val);
+    $('#chaos_chance').on('input', function() {
+        const value = $(this).val();
+        settings.chance = parseInt(value);
+        $('#chaos_chance_display').text(`${value}%`);
         saveSettingsDebounced();
     });
 }
 
-
+/**
+ * Логика обработки промпта
+ */
 async function onPromptReady(payload) {
     if (!settings.isEnabled) return;
 
@@ -93,27 +106,22 @@ async function onPromptReady(payload) {
     if (roll <= settings.chance) {
         const randomEvent = settings.events[Math.floor(Math.random() * settings.events.length)];
         
-       
         payload.push({
             role: 'system',
             content: `[IMPORTANT INSTRUCTION: ${randomEvent}]`
         });
 
-       
         if (settings.showNotifications) {
             toastr.warning(
                 randomEvent.replace('[OOC: ', '').replace(']', ''), 
-                "Chaos Triggered!", 
-                { timeOut: 5000, progressBar: true }
+                "Chaos Event Triggered!"
             );
         }
-        
-        console.log('Chaos Twist active:', randomEvent);
     }
 }
 
-(function init() {
-    createSettingsUI();
+// Запуск
+$(document).ready(function() {
+    setupUI();
     eventSource.on(event_types.CHAT_COMPLETION_PROMPT_READY, onPromptReady);
-    console.log("Chaos Twist extension initialized.");
-})();
+});
