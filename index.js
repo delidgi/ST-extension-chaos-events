@@ -40,24 +40,6 @@ function getSettings() {
     return extension_settings[extensionName];
 }
 
-function getMenuButtonText() {
-    const s = getSettings();
-    if (!s.isEnabled) {
-        return '⚡ Chaos: OFF';
-    }
-    return `⚡ Chaos: ${s.chance}%`;
-}
-
-function updateMenuButton() {
-    const menuItem = document.getElementById('chaos_menu_item');
-    if (menuItem) {
-        const span = menuItem.querySelector('span');
-        if (span) {
-            span.textContent = getMenuButtonText();
-        }
-    }
-}
-
 function syncExtensionPanel() {
     const s = getSettings();
     const enabled = document.getElementById('chaos_ext_enabled');
@@ -69,173 +51,6 @@ function syncExtensionPanel() {
     if (notify) notify.checked = s.showNotifications;
     if (slider) slider.value = s.chance;
     if (value) value.textContent = `${s.chance}%`;
-}
-
-
-function showSettingsPopup() {
-    const s = getSettings();
-    
-
-    document.getElementById('chaos_overlay')?.remove();
-    document.getElementById('chaos_popup')?.remove();
-    
-    const overlay = document.createElement('div');
-    overlay.id = 'chaos_overlay';
-    overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 99999;';
-    
-    const popup = document.createElement('div');
-    popup.id = 'chaos_popup';
-    popup.style.cssText = `
-        position: fixed; 
-        bottom: 10px;
-        left: 50%; 
-        transform: translateX(-50%); 
-        background: var(--SmartThemeBlurTintColor, #1e1e1e); 
-        border: 1px solid var(--SmartThemeBorderColor, #444); 
-        border-radius: 10px; 
-        z-index: 100000; 
-        box-shadow: 0 -5px 30px rgba(0,0,0,0.5);
-        padding: 15px;
-        width: calc(100% - 20px);
-        max-width: 320px;
-        max-height: 70vh;
-        overflow-y: auto;
-        color: var(--SmartThemeBodyColor, #eee);
-    `;
-    
-    popup.innerHTML = `
-        <h3 style="margin: 0 0 15px 0;">Chaos Plot Twist</h3>
-        
-        <div style="margin-bottom: 15px;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                <input type="checkbox" id="chaos_pop_enabled" ${s.isEnabled ? 'checked' : ''}>
-                <span>Enable Chaos Events</span>
-            </label>
-        </div>
-        
-        <div style="margin-bottom: 15px;">
-            <div style="margin-bottom: 5px;">
-                Trigger Chance: <strong id="chaos_pop_value">${s.chance}%</strong>
-            </div>
-            <input type="range" id="chaos_pop_slider" min="0" max="100" step="5" value="${s.chance}" style="width: 100%;">
-        </div>
-        
-        <div style="display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 15px;">
-            <button class="menu_button chaos_preset" data-val="0">OFF</button>
-            <button class="menu_button chaos_preset" data-val="5">5%</button>
-            <button class="menu_button chaos_preset" data-val="10">10%</button>
-            <button class="menu_button chaos_preset" data-val="25">25%</button>
-            <button class="menu_button chaos_preset" data-val="50">50%</button>
-            <button class="menu_button chaos_preset" data-val="100">100%</button>
-        </div>
-        
-        <div style="margin-bottom: 15px;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                <input type="checkbox" id="chaos_pop_notify" ${s.showNotifications ? 'checked' : ''}>
-                <span>Show Notifications</span>
-            </label>
-        </div>
-        
-        <div style="display: flex; gap: 10px; justify-content: flex-end;">
-            <button class="menu_button" id="chaos_pop_cancel">Cancel</button>
-            <button class="menu_button" id="chaos_pop_save" style="background: #e67e22; color: white;">Save</button>
-        </div>
-    `;
-    
-    document.body.appendChild(overlay);
-    document.body.appendChild(popup);
-    
-
-    const slider = document.getElementById('chaos_pop_slider');
-    const valueDisplay = document.getElementById('chaos_pop_value');
-    const enabledCb = document.getElementById('chaos_pop_enabled');
-    
-    slider.addEventListener('input', () => {
-        valueDisplay.textContent = slider.value + '%';
-    });
-    
-
-    popup.querySelectorAll('.chaos_preset').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const val = parseInt(btn.dataset.val);
-            slider.value = val;
-            valueDisplay.textContent = val + '%';
-            if (val === 0) enabledCb.checked = false;
-        });
-    });
-    
-
-    const closePopup = () => {
-        overlay.remove();
-        popup.remove();
-    };
-    
-    overlay.addEventListener('click', closePopup);
-    document.getElementById('chaos_pop_cancel').addEventListener('click', closePopup);
-    
-
-    document.getElementById('chaos_pop_save').addEventListener('click', () => {
-        const s = getSettings();
-        s.chance = parseInt(slider.value);
-        s.isEnabled = s.chance > 0 ? enabledCb.checked : false;
-        s.showNotifications = document.getElementById('chaos_pop_notify').checked;
-        
-        saveSettingsDebounced();
-        updateMenuButton();
-        syncExtensionPanel();
-        
-        toastr.success(`Chaos: ${s.isEnabled ? s.chance + '%' : 'OFF'}`, 'Saved!');
-        closePopup();
-    });
-}
-
-
-function addMenuButton() {
-    const optionsMenu = document.getElementById('options');
-    
-    if (!optionsMenu) {
-        return false;
-    }
-    
-    if (document.getElementById('chaos_menu_item')) {
-        return true;
-    }
-    
-    const menuItem = document.createElement('a');
-    menuItem.id = 'chaos_menu_item';
-    menuItem.classList.add('list-group-item', 'flex-container', 'flexGap5');
-    menuItem.style.cursor = 'pointer';
-    menuItem.innerHTML = `
-        <i class="fa-solid fa-bolt" style="color: #e67e22;"></i>
-        <span>${getMenuButtonText()}</span>
-    `;
-    
-
-    menuItem.onclick = function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-
-        const optionsBtn = document.getElementById('options_button');
-        if (optionsBtn) {
-            optionsBtn.click();
-        }
-        
-
-        setTimeout(showSettingsPopup, 150);
-        
-        return false;
-    };
-    
-    const firstItem = optionsMenu.querySelector('.list-group-item');
-    if (firstItem) {
-        optionsMenu.insertBefore(menuItem, firstItem);
-    } else {
-        optionsMenu.appendChild(menuItem);
-    }
-    
-    console.log('[Chaos Twist] Menu button added');
-    return true;
 }
 
 
@@ -285,7 +100,6 @@ function setupExtensionPanel() {
     $('#chaos_ext_enabled').on('change', function() {
         getSettings().isEnabled = this.checked;
         saveSettingsDebounced();
-        updateMenuButton();
     });
     
     $('#chaos_ext_notify').on('change', function() {
@@ -298,7 +112,6 @@ function setupExtensionPanel() {
         getSettings().chance = value;
         document.getElementById('chaos_ext_value').textContent = `${value}%`;
         saveSettingsDebounced();
-        updateMenuButton();
     });
 }
 
@@ -343,14 +156,6 @@ jQuery(async () => {
     
     loadSettings();
     setupExtensionPanel();
-    
-
-    const tryAddButton = () => {
-        if (!addMenuButton()) {
-            setTimeout(tryAddButton, 1000);
-        }
-    };
-    setTimeout(tryAddButton, 500);
     
 
     eventSource.on(event_types.MESSAGE_RECEIVED, onBotMessageReceived);
