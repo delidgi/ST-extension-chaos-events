@@ -42,9 +42,9 @@ function getSettings() {
 function getMenuButtonText() {
     const s = getSettings();
     if (!s.isEnabled) {
-        return 'Chaos: OFF';
+        return '⚡ Chaos: OFF';
     }
-    return `Chaos: ${s.chance}%`;
+    return `⚡ Chaos: ${s.chance}%`;
 }
 
 function updateMenuButton() {
@@ -70,10 +70,13 @@ function syncExtensionPanel() {
     if (value) value.textContent = `${s.chance}%`;
 }
 
-
+/**
+ * Показать popup настроек - работает и из бургер меню и из панели
+ */
 function showSettingsPopup() {
     const s = getSettings();
     
+    // Удаляем старый popup если есть
     document.getElementById('chaos_overlay')?.remove();
     document.getElementById('chaos_popup')?.remove();
     
@@ -94,12 +97,15 @@ function showSettingsPopup() {
         z-index: 100000; 
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         padding: 20px;
-        min-width: 300px;
+        width: 90%;
+        max-width: 320px;
+        max-height: 85vh;
+        overflow-y: auto;
         color: var(--SmartThemeBodyColor, #eee);
     `;
     
     popup.innerHTML = `
-        <h3 style="margin: 0 0 15px 0;">⚡ Chaos Plot Twist</h3>
+        <h3 style="margin: 0 0 15px 0;">Chaos Plot Twist</h3>
         
         <div style="margin-bottom: 15px;">
             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
@@ -140,7 +146,7 @@ function showSettingsPopup() {
     document.body.appendChild(overlay);
     document.body.appendChild(popup);
     
-    // Слайдер
+
     const slider = document.getElementById('chaos_pop_slider');
     const valueDisplay = document.getElementById('chaos_pop_value');
     const enabledCb = document.getElementById('chaos_pop_enabled');
