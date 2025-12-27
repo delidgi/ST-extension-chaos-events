@@ -11,7 +11,6 @@ import {
 
 const extensionName = "chaos_twist";
 
-// Дефолтные настройки
 const defaultSettings = {
     isEnabled: true,
     chance: 10,
@@ -43,9 +42,9 @@ function getSettings() {
 function getMenuButtonText() {
     const s = getSettings();
     if (!s.isEnabled) {
-        return '⚡ Chaos: OFF';
+        return 'Chaos: OFF';
     }
-    return `⚡ Chaos: ${s.chance}%`;
+    return `Chaos: ${s.chance}%`;
 }
 
 function updateMenuButton() {
@@ -71,13 +70,10 @@ function syncExtensionPanel() {
     if (value) value.textContent = `${s.chance}%`;
 }
 
-/**
- * Показать popup настроек - работает и из бургер меню и из панели
- */
+
 function showSettingsPopup() {
     const s = getSettings();
     
-    // Удаляем старый popup если есть
     document.getElementById('chaos_overlay')?.remove();
     document.getElementById('chaos_popup')?.remove();
     
@@ -153,7 +149,7 @@ function showSettingsPopup() {
         valueDisplay.textContent = slider.value + '%';
     });
     
-    // Пресеты
+
     popup.querySelectorAll('.chaos_preset').forEach(btn => {
         btn.addEventListener('click', () => {
             const val = parseInt(btn.dataset.val);
@@ -163,7 +159,7 @@ function showSettingsPopup() {
         });
     });
     
-    // Закрыть
+
     const closePopup = () => {
         overlay.remove();
         popup.remove();
@@ -172,7 +168,7 @@ function showSettingsPopup() {
     overlay.addEventListener('click', closePopup);
     document.getElementById('chaos_pop_cancel').addEventListener('click', closePopup);
     
-    // Сохранить
+
     document.getElementById('chaos_pop_save').addEventListener('click', () => {
         const s = getSettings();
         s.chance = parseInt(slider.value);
@@ -188,9 +184,7 @@ function showSettingsPopup() {
     });
 }
 
-/**
- * Добавить кнопку в бургер-меню
- */
+
 function addMenuButton() {
     const optionsMenu = document.getElementById('options');
     
@@ -211,18 +205,18 @@ function addMenuButton() {
         <span>${getMenuButtonText()}</span>
     `;
     
-    // Важно: используем onclick напрямую
+
     menuItem.onclick = function(e) {
         e.preventDefault();
         e.stopPropagation();
         
-        // Закрываем бургер-меню
+
         const optionsBtn = document.getElementById('options_button');
         if (optionsBtn) {
             optionsBtn.click();
         }
         
-        // Показываем popup с небольшой задержкой
+
         setTimeout(showSettingsPopup, 150);
         
         return false;
@@ -239,9 +233,7 @@ function addMenuButton() {
     return true;
 }
 
-/**
- * Панель расширений
- */
+
 function setupExtensionPanel() {
     const settingsHtml = `
         <div class="chaos_twist_settings">
@@ -305,13 +297,11 @@ function setupExtensionPanel() {
     });
 }
 
-/**
- * Срабатывает ПОСЛЕ того как бот ответил - перед твоим следующим сообщением
- */
+
 function onBotMessageReceived() {
     const s = getSettings();
     
-    // Очищаем предыдущий ивент
+
     setExtensionPrompt(extensionName, '', extension_prompt_types.IN_CHAT, 0);
     
     if (!s.isEnabled) {
@@ -324,7 +314,7 @@ function onBotMessageReceived() {
     if (roll <= s.chance) {
         const randomEvent = s.events[Math.floor(Math.random() * s.events.length)];
         
-        // Устанавливаем промпт который будет применён к следующему сообщению
+
         setExtensionPrompt(
             extensionName,
             `[OOC: ${randomEvent}]`,
@@ -342,14 +332,14 @@ function onBotMessageReceived() {
     }
 }
 
-// Инициализация
+
 jQuery(async () => {
     console.log('[Chaos Twist] Loading...');
     
     loadSettings();
     setupExtensionPanel();
     
-    // Добавляем кнопку в бургер-меню
+
     const tryAddButton = () => {
         if (!addMenuButton()) {
             setTimeout(tryAddButton, 1000);
@@ -357,7 +347,7 @@ jQuery(async () => {
     };
     setTimeout(tryAddButton, 500);
     
-    // MESSAGE_RECEIVED - когда бот закончил отвечать
+
     eventSource.on(event_types.MESSAGE_RECEIVED, onBotMessageReceived);
     
     console.log('[Chaos Twist] Ready! Event triggers after bot responds.');
