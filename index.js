@@ -11,6 +11,7 @@ import {
 
 const extensionName = "chaos_twist";
 
+
 const defaultSettings = {
     isEnabled: true,
     chance: 10,
@@ -70,13 +71,11 @@ function syncExtensionPanel() {
     if (value) value.textContent = `${s.chance}%`;
 }
 
-/**
- * Показать popup настроек - работает и из бургер меню и из панели
- */
+
 function showSettingsPopup() {
     const s = getSettings();
     
-    // Удаляем старый popup если есть
+
     document.getElementById('chaos_overlay')?.remove();
     document.getElementById('chaos_popup')?.remove();
     
@@ -88,18 +87,18 @@ function showSettingsPopup() {
     popup.id = 'chaos_popup';
     popup.style.cssText = `
         position: fixed; 
-        top: 50%; 
+        bottom: 10px;
         left: 50%; 
-        transform: translate(-50%, -50%); 
+        transform: translateX(-50%); 
         background: var(--SmartThemeBlurTintColor, #1e1e1e); 
         border: 1px solid var(--SmartThemeBorderColor, #444); 
         border-radius: 10px; 
         z-index: 100000; 
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        padding: 20px;
-        width: 90%;
+        box-shadow: 0 -5px 30px rgba(0,0,0,0.5);
+        padding: 15px;
+        width: calc(100% - 20px);
         max-width: 320px;
-        max-height: 85vh;
+        max-height: 70vh;
         overflow-y: auto;
         color: var(--SmartThemeBodyColor, #eee);
     `;
