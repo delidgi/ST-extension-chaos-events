@@ -11,6 +11,7 @@ import {
 
 const extensionName = "chaos_twist";
 
+let pendingEvent = null;
 
 const defaultSettings = {
     isEnabled: true,
@@ -51,6 +52,34 @@ function syncExtensionPanel() {
     if (notify) notify.checked = s.showNotifications;
     if (slider) slider.value = s.chance;
     if (value) value.textContent = `${s.chance}%`;
+}
+
+function showChaosNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'chaos-notification';
+    notification.innerHTML = `
+        <div class="chaos-notification-icon">⚡</div>
+        <div class="chaos-notification-content">
+            <div class="chaos-notification-title">Chaos Event!</div>
+            <div class="chaos-notification-message">${message}</div>
+        </div>
+        <div class="chaos-notification-close">×</div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    requestAnimationFrame(() => {
+        notification.classList.add('chaos-notification-show');
+    });
+    
+    const close = () => {
+        notification.classList.remove('chaos-notification-show');
+        notification.classList.add('chaos-notification-hide');
+        setTimeout(() => notification.remove(), 300);
+    };
+    
+    notification.querySelector('.chaos-notification-close').addEventListener('click', close);
+    setTimeout(close, 8000);
 }
 
 
@@ -119,6 +148,13 @@ function setupExtensionPanel() {
 function onBotMessageReceived() {
     const s = getSettings();
     
+    if (pendingEvent) {
+        if (s.showNotifications) {
+            showChaosNotification(pendingEvent);
+        }
+        console.log('[Chaos Twist] ✓ Event applied, notification shown:', pendingEvent);
+        pendingEvent = null;
+    }
 
     setExtensionPrompt(extensionName, '', extension_prompt_types.IN_CHAT, 0);
     
@@ -132,7 +168,6 @@ function onBotMessageReceived() {
     if (roll <= s.chance) {
         const randomEvent = s.events[Math.floor(Math.random() * s.events.length)];
         
-
         setExtensionPrompt(
             extensionName,
             `[OOC: ${randomEvent}]`,
@@ -140,9 +175,7 @@ function onBotMessageReceived() {
             0
         );
 
-        if (s.showNotifications) {
-            toastr.warning(randomEvent, "⚡ Chaos Event!", { timeOut: 8000 });
-        }
+        pendingEvent = randomEvent;
         
         console.log('[Chaos Twist] ✓ Event set for next message:', randomEvent);
     } else {
