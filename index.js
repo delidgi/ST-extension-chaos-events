@@ -11,7 +11,7 @@ import {
 
 const extensionName = "chaos_twist";
 
-let pendingEvent = null;
+let pendingNotification = null;
 
 const defaultSettings = {
     isEnabled: true,
@@ -145,20 +145,21 @@ function setupExtensionPanel() {
 }
 
 
-function onGenerationStarted() {
+function onUserMessageSent() {
     const s = getSettings();
     
-    if (pendingEvent && s.showNotifications) {
-        showChaosNotification(pendingEvent);
-        console.log('[Chaos Twist] ✓ Notification shown before generation:', pendingEvent);
+    if (pendingNotification && s.showNotifications) {
+        showChaosNotification(pendingNotification);
+        console.log('[Chaos Twist] ✓ Notification shown:', pendingNotification);
     }
+    pendingNotification = null;
 }
 
 
 function onBotMessageReceived() {
     const s = getSettings();
     
-    pendingEvent = null;
+
     setExtensionPrompt(extensionName, '', extension_prompt_types.IN_CHAT, 0);
     
     if (!s.isEnabled) {
@@ -171,6 +172,7 @@ function onBotMessageReceived() {
     if (roll <= s.chance) {
         const randomEvent = s.events[Math.floor(Math.random() * s.events.length)];
         
+
         setExtensionPrompt(
             extensionName,
             `[OOC: ${randomEvent}]`,
@@ -178,7 +180,7 @@ function onBotMessageReceived() {
             0
         );
 
-        pendingEvent = randomEvent;
+        pendingNotification = randomEvent;
         
         console.log('[Chaos Twist] ✓ Event set for next message:', randomEvent);
     } else {
@@ -193,7 +195,8 @@ jQuery(async () => {
     loadSettings();
     setupExtensionPanel();
     
-    eventSource.on(event_types.GENERATION_STARTED, onGenerationStarted);
+
+    eventSource.on(event_types.MESSAGE_SENT, onUserMessageSent);
     eventSource.on(event_types.MESSAGE_RECEIVED, onBotMessageReceived);
     
     console.log('[Chaos Twist] Ready! Event triggers after bot responds.');
