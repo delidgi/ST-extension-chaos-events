@@ -145,17 +145,20 @@ function setupExtensionPanel() {
 }
 
 
+function onGenerationStarted() {
+    const s = getSettings();
+    
+    if (pendingEvent && s.showNotifications) {
+        showChaosNotification(pendingEvent);
+        console.log('[Chaos Twist] ✓ Notification shown before generation:', pendingEvent);
+    }
+}
+
+
 function onBotMessageReceived() {
     const s = getSettings();
     
-    if (pendingEvent) {
-        if (s.showNotifications) {
-            showChaosNotification(pendingEvent);
-        }
-        console.log('[Chaos Twist] ✓ Event applied, notification shown:', pendingEvent);
-        pendingEvent = null;
-    }
-
+    pendingEvent = null;
     setExtensionPrompt(extensionName, '', extension_prompt_types.IN_CHAT, 0);
     
     if (!s.isEnabled) {
@@ -190,7 +193,7 @@ jQuery(async () => {
     loadSettings();
     setupExtensionPanel();
     
-
+    eventSource.on(event_types.GENERATION_STARTED, onGenerationStarted);
     eventSource.on(event_types.MESSAGE_RECEIVED, onBotMessageReceived);
     
     console.log('[Chaos Twist] Ready! Event triggers after bot responds.');
