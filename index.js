@@ -260,7 +260,9 @@ function openCategoryEditor(catKey) {
     document.addEventListener('keydown', escHandler);
 
     requestAnimationFrame(() => overlay.classList.add('chaos-editor-show'));
-    setTimeout(() => textarea.focus(), 100);
+    if (window.matchMedia('(min-width: 601px)').matches) {
+        setTimeout(() => textarea.focus(), 100);
+    }
 }
 
 function setupExtensionPanel() {

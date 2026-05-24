@@ -99,12 +99,14 @@
     z-index: 99999;
     background: rgba(0, 0, 0, 0.55);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     padding: 20px;
     opacity: 0;
     transition: opacity 0.2s ease;
     backdrop-filter: blur(4px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .chaos-editor-overlay.chaos-editor-show {
@@ -117,7 +119,8 @@
 
 .chaos-editor-popup {
     width: min(560px, 95vw);
-    max-height: 90vh;
+    max-height: calc(100vh - 40px);
+    margin: auto 0;
     overflow-y: auto;
     background: var(--SmartThemeBlurTintColor, rgba(30, 30, 30, 0.98));
     border: 1px solid var(--SmartThemeBorderColor, rgba(255, 255, 255, 0.12));
@@ -130,6 +133,23 @@
     gap: 14px;
     transform: translateY(10px) scale(0.97);
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (max-width: 600px) {
+    .chaos-editor-overlay {
+        padding: 10px;
+        align-items: flex-start;
+    }
+
+    .chaos-editor-popup {
+        max-height: none;
+        margin: 0;
+        padding: 14px;
+    }
+
+    .chaos-editor-textarea {
+        min-height: 140px;
+    }
 }
 
 .chaos-editor-overlay.chaos-editor-show .chaos-editor-popup {
