@@ -10,6 +10,7 @@ import {
 } from '../../../extensions.js';
 
 const extensionName = "chaos_twist";
+const intimateSceneGuard = "DO NOT APPLY THE EVENT IF THE SCENE IS INTIMATE OR ABOUT TO BECOME INTIMATE.";
 
 let pendingNotification = null;
 
@@ -66,6 +67,7 @@ const defaultSettings = {
     isEnabled: true,
     chance: 10,
     showNotifications: true,
+    avoidIntimateScenes: false,
     categories: structuredClone(defaultCategories),
     events: null,
 };
@@ -125,11 +127,13 @@ function syncExtensionPanel() {
     const s = getSettings();
     const enabled = document.getElementById('chaos_ext_enabled');
     const notify = document.getElementById('chaos_ext_notify');
+    const nsfwGuard = document.getElementById('chaos_ext_nsfw_guard');
     const slider = document.getElementById('chaos_ext_slider');
     const value = document.getElementById('chaos_ext_value');
 
     if (enabled) enabled.checked = s.isEnabled;
     if (notify) notify.checked = s.showNotifications;
+    if (nsfwGuard) nsfwGuard.checked = s.avoidIntimateScenes;
     if (slider) slider.value = s.chance;
     if (value) value.textContent = `${s.chance}%`;
 
@@ -290,32 +294,41 @@ function setupExtensionPanel() {
                     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
                 </div>
                 <div class="inline-drawer-content">
-                    <div class="flex-container">
-                        <label class="checkbox_label">
-                            <input type="checkbox" id="chaos_ext_enabled">
-                            <span>Enable Chaos Events</span>
-                        </label>
-                    </div>
+                    <div class="chaos-settings-content">
+                        <div class="flex-container">
+                            <label class="checkbox_label">
+                                <input type="checkbox" id="chaos_ext_enabled">
+                                <span>Enable Chaos Events</span>
+                            </label>
+                        </div>
 
-                    <div class="flex-container flexFlowColumn">
-                        <label>
-                            <span>Trigger Chance: </span>
-                            <strong id="chaos_ext_value">10%</strong>
-                        </label>
-                        <input type="range" id="chaos_ext_slider" min="0" max="100" step="1" class="neo-range-slider">
-                    </div>
+                        <div class="flex-container flexFlowColumn">
+                            <label>
+                                <span>Trigger Chance: </span>
+                                <strong id="chaos_ext_value">10%</strong>
+                            </label>
+                            <input type="range" id="chaos_ext_slider" min="0" max="100" step="1" class="neo-range-slider">
+                        </div>
 
-                    <div class="flex-container">
-                        <label class="checkbox_label">
-                            <input type="checkbox" id="chaos_ext_notify">
-                            <span>Show Notifications</span>
-                        </label>
-                    </div>
+                        <div class="flex-container">
+                            <label class="checkbox_label">
+                                <input type="checkbox" id="chaos_ext_notify">
+                                <span>Show Notifications</span>
+                            </label>
+                        </div>
 
-                    <div class="chaos-categories-block">
-                        <div class="chaos-categories-title">Event categories</div>
-                        <div class="chaos-categories-list">
-                            ${categoriesHtml}
+                        <div class="flex-container">
+                            <label class="checkbox_label" title="Skip chaos events during intimate or nearly intimate scenes">
+                                <input type="checkbox" id="chaos_ext_nsfw_guard">
+                                <span>NSFW protection</span>
+                            </label>
+                        </div>
+
+                        <div class="chaos-categories-block">
+                            <div class="chaos-categories-title">Event categories</div>
+                            <div class="chaos-categories-list">
+                                ${categoriesHtml}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -334,6 +347,11 @@ function setupExtensionPanel() {
 
     $('#chaos_ext_notify').on('change', function () {
         getSettings().showNotifications = this.checked;
+        saveSettingsDebounced();
+    });
+
+    $('#chaos_ext_nsfw_guard').on('change', function () {
+        getSettings().avoidIntimateScenes = this.checked;
         saveSettingsDebounced();
     });
 
@@ -400,10 +418,13 @@ function onBotMessageReceived() {
     if (roll <= s.chance) {
         const randomEvent = pickRandomEventFromEnabledCategories();
         if (!randomEvent) return;
+        const eventPrompt = s.avoidIntimateScenes
+            ? `${intimateSceneGuard}\n\n${randomEvent}`
+            : randomEvent;
 
         setExtensionPrompt(
             extensionName,
-            `[OOC: ${randomEvent}]`,
+            `[OOC: ${eventPrompt}]`,
             extension_prompt_types.IN_CHAT,
             0,
         );
