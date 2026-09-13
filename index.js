@@ -13,6 +13,50 @@ const extensionName = "chaos_twist";
 const intimateSceneGuard = "DO NOT APPLY THE EVENT IF THE SCENE IS INTIMATE OR ABOUT TO BECOME INTIMATE.";
 
 let pendingNotification = null;
+// Выпавшее событие помним отдельно от самого инжекта: фоновые генерации
+// (телефон, суммаризация — всё, что идёт через quiet-prompt) не проходят
+// MESSAGE_RECEIVED, значит там инжект не чистится и не перекатывается. Без
+// этого одно и то же событие прокалывалось в каждой смс подряд и отпускало
+// только тогда, когда писался обычный пост.
+let armedPrompt = null;
+let hiddenForQuiet = false;
+
+function writeChaosPrompt(text) {
+    setExtensionPrompt(extensionName, text, extension_prompt_types.IN_CHAT, 0);
+}
+
+function armChaosPrompt(text) {
+    armedPrompt = text;
+    hiddenForQuiet = false;
+    writeChaosPrompt(text);
+}
+
+function disarmChaosPrompt() {
+    armedPrompt = null;
+    hiddenForQuiet = false;
+    writeChaosPrompt('');
+}
+
+// Прячем событие на время фоновой генерации — и возвращаем после, чтобы оно
+// досталось следующему нормальному ходу, а не пропало зря.
+function hideChaosForQuiet() {
+    if (!armedPrompt || hiddenForQuiet) return;
+    hiddenForQuiet = true;
+    writeChaosPrompt('');
+}
+
+function restoreChaosAfterQuiet() {
+    if (!hiddenForQuiet) return;
+    hiddenForQuiet = false;
+    if (armedPrompt) writeChaosPrompt(armedPrompt);
+}
+
+function onGenerationStarted(type) {
+    if (type === 'quiet') hideChaosForQuiet();
+    // Подстраховка: если GENERATION_ENDED почему-то не дошёл, возвращаем
+    // событие хотя бы перед следующей настоящей генерацией
+    else restoreChaosAfterQuiet();
+}
 
 const defaultCategories = {
     plot_twist: {
@@ -407,7 +451,7 @@ function onUserMessageSent() {
 function onBotMessageReceived() {
     const s = getSettings();
 
-    setExtensionPrompt(extensionName, '', extension_prompt_types.IN_CHAT, 0);
+    disarmChaosPrompt();
 
     if (!s.isEnabled) {
         return;
@@ -422,12 +466,7 @@ function onBotMessageReceived() {
             ? `${intimateSceneGuard}\n\n${randomEvent}`
             : randomEvent;
 
-        setExtensionPrompt(
-            extensionName,
-            `[OOC: ${eventPrompt}]`,
-            extension_prompt_types.IN_CHAT,
-            0,
-        );
+        armChaosPrompt(`[OOC: ${eventPrompt}]`);
 
         pendingNotification = randomEvent;
     }
@@ -439,4 +478,7 @@ jQuery(async () => {
 
     eventSource.on(event_types.MESSAGE_SENT, onUserMessageSent);
     eventSource.on(event_types.MESSAGE_RECEIVED, onBotMessageReceived);
+    eventSource.on(event_types.GENERATION_STARTED, onGenerationStarted);
+    eventSource.on(event_types.GENERATION_ENDED, restoreChaosAfterQuiet);
+    eventSource.on(event_types.GENERATION_STOPPED, restoreChaosAfterQuiet);
 });
